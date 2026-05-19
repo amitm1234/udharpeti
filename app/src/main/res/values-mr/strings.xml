@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">उधार पेटी</string>
+    <string name="tagline">हिशोब सोपा करा</string>
+    <string name="powered_by">Firebase द्वारे</string>
+</resources>
