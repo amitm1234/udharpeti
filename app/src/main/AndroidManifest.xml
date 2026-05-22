@@ -23,8 +23,17 @@
         </activity>
 
         <activity android:name=".MainActivity" />
-        <activity android:name=".HomeActivity" />
+        <activity android:name=".CompletedActivity" />
+        <activity android:name=".PersonGroupActivity" />
+
         <activity android:name=".LoginActivity" />
+        <activity android:name=".RegisterActivity" />
+        <activity android:name=".AddPersonActivity" />
+        <activity android:name=".PersonDetailActivity" />
+        <activity android:name=".AddPaymentActivity" />
+        <activity android:name=".HistoryActivity" />
+        <activity android:name=".SettingsActivity" />
+        <activity android:name=".ConfirmationActivity" />
 
     </application>
 
