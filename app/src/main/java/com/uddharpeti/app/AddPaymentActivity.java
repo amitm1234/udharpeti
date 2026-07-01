@@ -1,5 +1,6 @@
 package com.uddharpeti.app;
 
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -10,9 +11,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.datepicker.CalendarConstraints;
-import com.google.android.material.datepicker.DateValidatorPointForward;
-import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FieldValue;
@@ -123,8 +121,9 @@ public class AddPaymentActivity extends AppCompatActivity {
     }
 
     private void showDatePicker() {
-        long minDate = MaterialDatePicker.todayInUtcMilliseconds();
+        Calendar cal = Calendar.getInstance();
         
+        long minDate = System.currentTimeMillis();
         if (loanStartDate != null && !loanStartDate.isEmpty()) {
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
@@ -137,26 +136,26 @@ public class AddPaymentActivity extends AppCompatActivity {
             }
         }
 
-        CalendarConstraints constraints = new CalendarConstraints.Builder()
-                .setValidator(DateValidatorPointForward.from(minDate))
-                .setStart(minDate)
-                .build();
+        DatePickerDialog picker = new DatePickerDialog(
+                this,
+                android.R.style.Theme_Holo_Dialog_MinWidth,
+                (view, year, month, dayOfMonth) -> {
+                    cal.set(year, month, dayOfMonth);
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                    selectedDate = sdf.format(cal.getTime());
+                    btnDatePicker.setText(selectedDate);
+                },
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH),
+                cal.get(Calendar.DAY_OF_MONTH));
 
-        MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
-                .setTitleText("तारीख निवडा")
-                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
-                .setCalendarConstraints(constraints)
-                .build();
+        // Logic for min date
+        picker.getDatePicker().setMinDate(minDate);
 
-        datePicker.addOnPositiveButtonClickListener(selection -> {
-            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            calendar.setTimeInMillis(selection);
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-            selectedDate = sdf.format(calendar.getTime());
-            btnDatePicker.setText(selectedDate);
-        });
-
-        datePicker.show(getSupportFragmentManager(), "DATE_PICKER");
+        // Spinner style set करा
+        picker.getDatePicker().setCalendarViewShown(false);
+        picker.getDatePicker().setSpinnersShown(true);
+        picker.show();
     }
 
     private void updatePreview() {

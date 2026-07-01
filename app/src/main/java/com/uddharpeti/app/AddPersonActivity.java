@@ -1,6 +1,7 @@
 package com.uddharpeti.app;
 
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -15,7 +16,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -200,20 +200,24 @@ public class AddPersonActivity extends AppCompatActivity {
     }
 
     private void showDatePicker() {
-        MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
-                .setTitleText("तारीख निवडा")
-                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
-                .build();
+        Calendar cal = Calendar.getInstance();
+        DatePickerDialog picker = new DatePickerDialog(
+                this,
+                android.R.style.Theme_Holo_Dialog_MinWidth,
+                (view, year, month, dayOfMonth) -> {
+                    cal.set(year, month, dayOfMonth);
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                    selectedDate = sdf.format(cal.getTime());
+                    btnDatePicker.setText(selectedDate);
+                },
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH),
+                cal.get(Calendar.DAY_OF_MONTH));
 
-        datePicker.addOnPositiveButtonClickListener(selection -> {
-            Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            calendar.setTimeInMillis(selection);
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-            selectedDate = sdf.format(calendar.getTime());
-            btnDatePicker.setText(selectedDate);
-        });
-
-        datePicker.show(getSupportFragmentManager(), "DATE_PICKER");
+        // Spinner style set करा
+        picker.getDatePicker().setCalendarViewShown(false);
+        picker.getDatePicker().setSpinnersShown(true);
+        picker.show();
     }
 
     private void updatePreview() {

@@ -1,5 +1,6 @@
 package com.uddharpeti.app;
 
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -23,6 +24,7 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -30,6 +32,8 @@ import java.util.Locale;
 public class PersonDetailActivity extends AppCompatActivity {
 
     private TextView tvInitials, tvName, tvPhone, tvBadge, tvStatPrincipal, tvStatRate, tvStatInterest, tvStartDate, tvFormulaMonthly, tvFormulaYearly, tvFormulaCalc, tvRemainingAmount;
+    private TextView tvEndDate;
+    private TextView tvDuration;
     private RecyclerView rvPayments;
     private PaymentAdapter adapter;
     private List<Payment> paymentList;
@@ -42,6 +46,7 @@ public class PersonDetailActivity extends AppCompatActivity {
     private double totalInterest = 0;
     private double totalDue = 0;
     private double remaining = 0;
+    private Date selectedEndDate = new Date();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +75,36 @@ public class PersonDetailActivity extends AppCompatActivity {
         tvFormulaYearly = findViewById(R.id.tvFormulaYearly);
         tvFormulaCalc = findViewById(R.id.tvFormulaCalc);
         tvRemainingAmount = findViewById(R.id.tvRemainingAmount);
+        tvEndDate = findViewById(R.id.tvEndDate);
+        tvDuration = findViewById(R.id.tvDuration);
         btnAddPayment = findViewById(R.id.btnAddPayment);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        tvEndDate.setText(sdf.format(new Date()));
+
+        tvEndDate.setOnClickListener(v -> {
+            Calendar cal = Calendar.getInstance();
+            DatePickerDialog picker = new DatePickerDialog(
+                    PersonDetailActivity.this,
+                    android.R.style.Theme_Holo_Dialog_MinWidth,
+                    (view, year, month, day) -> {
+                        cal.set(year, month, day);
+                        selectedEndDate = cal.getTime();
+                        SimpleDateFormat f = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+                        tvEndDate.setText(f.format(selectedEndDate));
+                        if (currentPerson != null) {
+                            recalculateWithEndDate(currentPerson, paymentList);
+                        }
+                    },
+                    cal.get(Calendar.YEAR),
+                    cal.get(Calendar.MONTH),
+                    cal.get(Calendar.DAY_OF_MONTH));
+
+            // Spinner style set करा
+            picker.getDatePicker().setCalendarViewShown(false);
+            picker.getDatePicker().setSpinnersShown(true);
+            picker.show();
+        });
 
         rvPayments = findViewById(R.id.rvPayments);
         rvPayments.setLayoutManager(new LinearLayoutManager(this));
@@ -176,6 +210,8 @@ public class PersonDetailActivity extends AppCompatActivity {
             if (!paymentList.isEmpty()) {
                 calculateRemaining(person, paymentList);
             }
+
+            recalculateWithEndDate(person, paymentList);
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -205,40 +241,60 @@ public class PersonDetailActivity extends AppCompatActivity {
     }
 
     private void calculateRemaining(Person person, List<Payment> payments) {
-        // Days calculate
-        long days = getDaysDiff(person.getStartDate());
-        double months = days / 30.0;
-        double principal = person.getAmount();
-        double rate = person.getInterestRate();
+        recalculateWithEndDate(person, payments);
+    }
 
-        // Yearly असेल तर monthly मध्ये convert करा
-        if (person.getInterestType().equals("yearly")) {
-            rate = rate / 12;
-        }
+    private void recalculateWithEndDate(Person person, List<Payment> payments) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            Date start = sdf.parse(person.getStartDate());
 
-        // Simple Interest
-        totalInterest = (principal * rate * months) / 100.0;
-        totalDue = principal + totalInterest;
+            long diffMs = selectedEndDate.getTime() - start.getTime();
+            long days = diffMs / (1000 * 60 * 60 * 24);
 
-        // सर्व payments subtract करा
-        double totalPaid = 0;
-        for (Payment payment : payments) {
-            totalPaid += payment.getAmount();
-        }
+            // Duration update
+            long months = days / 30;
+            long remainingDays = days % 30;
+            tvDuration.setText(months + " महिने " + remainingDays + " दिवस");
 
-        remaining = totalDue - totalPaid;
-        if (remaining < 0) remaining = 0;
+            // Interest calculate
+            double principal = person.getAmount();
+            double rate = person.getInterestRate();
+            if ("yearly".equals(person.getInterestType())) {
+                rate = rate / 12.0;
+            }
+            double monthsDecimal = days / 30.0;
+            totalInterest = (principal * rate * monthsDecimal) / 100.0;
+            totalDue = principal + totalInterest;
 
-        // UI update करा
-        tvStatInterest.setText("₹" + String.format("%.2f", totalInterest));
-        tvRemainingAmount.setText("₹" + String.format("%.2f", remaining));
+            // Payments subtract
+            double totalPaid = 0;
+            for (Payment payment : payments) {
+                totalPaid += payment.getAmount();
+            }
+            remaining = totalDue - totalPaid;
+            if (remaining < 0) remaining = 0;
 
-        // Remaining 0 असेल तर green दाखवा
-        if (remaining == 0) {
-            tvRemainingAmount.setTextColor(Color.parseColor("#4CAF50"));
-            tvRemainingAmount.setText("पूर्ण भरले ✓");
-        } else {
-            tvRemainingAmount.setTextColor(Color.parseColor("#F44336"));
+            // UI update
+            tvStatInterest.setText("₹" + String.format("%.2f", totalInterest));
+
+            double monthlyInt = (principal * rate) / 100.0;
+            tvFormulaMonthly.setText(String.format("₹%.2f/महिना", monthlyInt));
+            tvFormulaYearly.setText(String.format("₹%.2f/वर्ष", monthlyInt * 12));
+            tvFormulaCalc.setText(String.format(Locale.getDefault(),
+                    "%.0f × %.1f × %.1f ÷ 100 = %.2f",
+                    principal, rate, monthsDecimal, totalInterest));
+
+            if (remaining == 0) {
+                tvRemainingAmount.setTextColor(Color.parseColor("#4CAF50"));
+                tvRemainingAmount.setText("पूर्ण भरले ✓");
+            } else {
+                tvRemainingAmount.setTextColor(Color.parseColor("#F44336"));
+                tvRemainingAmount.setText("₹" + String.format("%.2f", remaining));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
