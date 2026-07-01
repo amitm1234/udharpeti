@@ -18,3 +18,5 @@ local.properties
 *.keystore
 .gradle
 /build
+/.idea/deploymentTargetSelector.xml
+/.idea/deviceStreaming.xml
